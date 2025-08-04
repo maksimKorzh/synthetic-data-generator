@@ -9,6 +9,7 @@
 ############################
 
 import os
+import sys
 import math
 import time
 import torch
@@ -27,11 +28,12 @@ from torch.nn import functional as F
 #
 ############################
 
+# Training
 eval_interval = 200                    # evaluate model every N steps
-log_interval = 1                       # ? evaluate loss every N steps
+log_interval = 1                       # evaluate loss every N steps
 eval_iters = 20                        # evaluate model mean iterations
 eval_only = False                      # evaluate model and exit
-always_save_checkpoint = False         # save checkpoint every iteration
+always_save_checkpoint = True          # save checkpoint everytime model is evaluated
 init_from = 'scratch'                  # init from 'scratch' or 'resume' training
 gradient_accumulation_steps = 5 * 8    # used to simulate larger batch sizes
 batch_size = 12                        # if gradient_accumulation_steps > 1, this is the micro-batch size
@@ -53,8 +55,14 @@ warmup_iters = 100                     # how many steps to warm up for
 min_lr = 6e-5                          # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
 backend = 'nccl'                       # 'nccl', 'gloo', etc.
 device = 'cpu'                         # examples: 'cpu', 'cuda', 'cuda:0', 'cuda:1' etc., or try 'mps' on macbooks
+dtype = 'float16'                      # 'float32', 'bfloat16', or 'float16', the latter will auto implement a GradScaler
 compile = False                        # use PyTorch 2.0 to compile the model to be faster
-dtype = 'bfloat16' if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else 'float16' # 'float32', 'bfloat16', or 'float16', the latter will auto implement a GradScaler
+
+# Sampling
+num_samples = 1                        # generate N samples start from "prompt"
+max_new_tokens = 100                   # generate N chars per sample
+temperature = 0.8                      # 1.0 = no change, < 1.0 = less random, > 1.0 = mor
+top_k = 10                             # use only top N tokens
 
 ############################
 #
@@ -280,11 +288,10 @@ torch.backends.cudnn.allow_tf32 = True # allow tf32 on cudnn
 device_type = device
 ptdtype = {'float32': torch.float32, 'bfloat16': torch.bfloat16, 'float16': torch.float16}[dtype]
 ctx = nullcontext() if device_type == 'cpu' else torch.amp.autocast(device_type=device_type, dtype=ptdtype)
-data_dir = ''
 
 def get_batch(split):
-    if split == 'train': data = np.memmap(os.path.join(data_dir, 'train.bin'), dtype=np.uint16, mode='r')
-    else: data = np.memmap(os.path.join(data_dir, 'val.bin'), dtype=np.uint16, mode='r')
+    if split == 'train': data = np.memmap(os.path.join('', 'train.bin'), dtype=np.uint16, mode='r')
+    else: data = np.memmap(os.path.join('', 'val.bin'), dtype=np.uint16, mode='r')
     ix = torch.randint(len(data) - block_size, (batch_size,))
     x = torch.stack([torch.from_numpy((data[i:i+block_size]).astype(np.int64)) for i in ix])
     y = torch.stack([torch.from_numpy((data[i+1:i+1+block_size]).astype(np.int64)) for i in ix])
@@ -294,7 +301,7 @@ def get_batch(split):
 
 iter_num = 0
 best_val_loss = 1e9
-meta_path = os.path.join(data_dir, 'meta.pkl')
+meta_path = os.path.join('', 'meta.pkl')
 meta_vocab_size = None
 
 if os.path.exists(meta_path):
@@ -385,6 +392,7 @@ def train():
             print(f"step {iter_num}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
             if losses['val'] < best_val_loss or always_save_checkpoint:
                 best_val_loss = losses['val']
+                print('iter_num after', iter_num)
                 if iter_num > 0:
                     checkpoint = {
                         'model': raw_model.state_dict(),
@@ -392,7 +400,6 @@ def train():
                         'model_args': model_args,
                         'iter_num': iter_num,
                         'best_val_loss': best_val_loss,
-                        'config': config,
                     }
                     print(f"saving checkpoint")
                     torch.save(checkpoint, os.path.join('', 'ckpt.pt'))
@@ -422,4 +429,44 @@ def train():
         local_iter_num += 1
         if iter_num > max_iters: break
 
-train()
+############################
+#
+#          SAMPLE
+#
+############################
+
+def sample():
+    ckpt_path = os.path.join('', 'ckpt.pt')
+    checkpoint = torch.load(ckpt_path, map_location=device)
+    gptconf = GPTConfig(**checkpoint['model_args'])
+    model = GPT(gptconf)
+    state_dict = checkpoint['model']
+    unwanted_prefix = '_orig_mod.'
+    for k,v in list(state_dict.items()):
+        if k.startswith(unwanted_prefix):
+            state_dict[k[len(unwanted_prefix):]] = state_dict.pop(k)
+    model.load_state_dict(state_dict)
+    model.eval()
+    model.to(device)
+    if compile: model = torch.compile(model)
+    print(f"Loading meta from {meta_path}...")
+    with open(meta_path, 'rb') as f: meta = pickle.load(f)
+    prompt = '\n'
+    start_ids = encode(prompt)
+    x = (torch.tensor(start_ids, dtype=torch.long, device=device)[None, ...])
+    with torch.no_grad():
+        with ctx:
+            for k in range(num_samples):
+                y = model.generate(x, max_new_tokens, temperature=temperature, top_k=top_k)
+                print(decode(y[0].tolist()))
+
+############################
+#
+#           MAIN
+#
+############################
+
+if len(sys.argv) == 2:
+    if sys.argv[1] == 'train': train()
+    if sys.argv[1] == 'sample': sample()
+else: print('Usage: "python gpt.py train" or "python gpt.py sample"')
