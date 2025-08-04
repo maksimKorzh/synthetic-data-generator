@@ -28,6 +28,46 @@ from torch.nn import functional as F
 #
 ############################
 
+#    ---------------------------------------
+#      The rule of thumb is the smaller
+#      dataset we have the less complicated
+#      model should be, hence less params
+#    ---------------------------------------
+#
+# 1. If during training you have train loss roughly
+#    equal to validation loss the params are fine
+#
+# 2. If train loss is not dropping below 1.0 model is underfitting,
+#    try adding more n_layer, n_heads, n_embd
+#
+# 3. If train loss is below 1.0 and validation loss is much higher
+#    than the thraining loss model is overfitting. If generalizing
+#    is not needed. e.g. you just want model to learnb data, then
+#    just leave it, otherwise try reducing n_layer, n_heads, n_embd
+#
+#    -------------------------
+#      Possible configurations
+#    -------------------------
+#
+#    GPT-1
+#    'openai-gpt':  n_layer=12, n_head=12, n_embd=768,  117M params
+#
+#    GPT-2 configs
+#    'gpt2':        n_layer=12, n_head=12, n_embd=768,  124M params
+#    'gpt2-medium': n_layer=24, n_head=16, n_embd=1024, 350M params
+#    'gpt2-large':  n_layer=36, n_head=20, n_embd=1280, 774M params
+#    'gpt2-xl':     n_layer=48, n_head=25, n_embd=1600, 1558M params
+#
+#    Gophers
+#    'gopher-44m': dict(n_layer=8, n_head=16, n_embd=512),
+#    (there are a number more...)
+#
+#     Andrej Karpathy made these tiny models up
+#    (this is likely what we want to use)                 (depends on data)
+#    'gpt-mini':    n_layer=6,  n_head=6,  n_embd=192  # training data < 10Mb
+#    'gpt-micro':   n_layer=4,  n_head=4,  n_embd=128  # training data < 5Mb
+#    'gpt-nano':    n_layer=3,  n_head=3,  n_embd=48   # training data < 1Mb
+
 # Training
 eval_interval = 200                    # evaluate model every N steps
 log_interval = 1                       # evaluate loss every N steps
@@ -35,6 +75,7 @@ eval_iters = 20                        # evaluate model mean iterations
 eval_only = False                      # evaluate model and exit
 always_save_checkpoint = True          # save checkpoint everytime model is evaluated
 init_from = 'scratch'                  # init from 'scratch' or 'resume' training
+bias = False                           # do we use bias inside LayerNorm and Linear layers?
 gradient_accumulation_steps = 5 * 8    # used to simulate larger batch sizes
 batch_size = 12                        # if gradient_accumulation_steps > 1, this is the micro-batch size
 block_size = 128                       # how many chars look backward
@@ -42,10 +83,9 @@ n_layer = 2                            # number of GPT layers
 n_head = 2                             # number of GPT attention heads
 n_embd = 64                            # number of GPT embeddings
 dropout = 0.0                          # for pretraining 0 is good, for finetuning try 0.1+
-bias = False                           # do we use bias inside LayerNorm and Linear layers?
-learning_rate = 6e-4                   # max learning rate
 max_iters = 2000                       # total number of training iterations
 lr_decay_iters = 2000                  # should be ~= max_iters
+learning_rate = 6e-4                   # max learning rate
 weight_decay = 1e-1                    # by how much optimizer can change learning rate
 beta1 = 0.9                            # optimizer param
 beta2 = 0.95                           # optimizer param
