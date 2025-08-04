@@ -11,7 +11,7 @@ small models on tiny datasets, e.g. less than 10Mb, with an idea to replicate in
 the original dataset.
 
 # How to use it
-    **python gpt.py train**   # to train model
-    **python gpt.py sample**  # to sample from model
+    python gpt.py train   # to train model
+    python gpt.py sample  # to sample from model
 
-    See **CONFIG** section in **gpt.py** for more info
+    See CONFIG section in "gpt.py" for more info
