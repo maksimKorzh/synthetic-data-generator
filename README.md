@@ -24,3 +24,6 @@ the original dataset.
 # How good eventual dataset is?
 Just run "eval.py" to compare performance for real
 vs synthetic Melbourne Housing Market dataset
+
+# Melbourne House Market: Real vs Synthetic
+![IMAGE ALT TEXT HERE](https://raw.githubusercontent.com/maksimKorzh/synthetic-data-generator/main/graph.png)
