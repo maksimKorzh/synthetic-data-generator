@@ -13,5 +13,10 @@ the original dataset.
 # How to use it
     python gpt.py train   # to train model
     python gpt.py sample  # to sample from model
-
+    
     See CONFIG section in "gpt.py" for more info
+    
+    NOTE: You'd probably want to slightly adjust
+    sampling loop to clip the line length by the
+    new line feed and append each generated line
+    to a file
