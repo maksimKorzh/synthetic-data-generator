@@ -25,5 +25,5 @@ the original dataset.
 Just run "eval.py" to compare performance for real
 vs synthetic Melbourne Housing Market dataset
 
-# Melbourne House Market: Real vs Synthetic
+# Melbourne house market price prediction
 ![IMAGE ALT TEXT HERE](https://raw.githubusercontent.com/maksimKorzh/synthetic-data-generator/main/graph.png)
