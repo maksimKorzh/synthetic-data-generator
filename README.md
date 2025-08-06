@@ -20,3 +20,7 @@ the original dataset.
     sampling loop to clip the line length by the
     new line feed and append each generated line
     to a file
+
+# How good eventual dataset is?
+Just run "eval.py" to compare performance for real
+vs synthetic Melbourne Housing Market dataset
