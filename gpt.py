@@ -79,9 +79,9 @@ bias = False                           # do we use bias inside LayerNorm and Lin
 gradient_accumulation_steps = 5 * 8    # used to simulate larger batch sizes
 batch_size = 12                        # if gradient_accumulation_steps > 1, this is the micro-batch size
 block_size = 128                       # how many chars look backward
-n_layer = 2                            # number of GPT layers
-n_head = 2                             # number of GPT attention heads
-n_embd = 64                            # number of GPT embeddings
+n_layer = 3                            # number of GPT layers
+n_head = 3                             # number of GPT attention heads
+n_embd = 48                            # number of GPT embeddings
 dropout = 0.0                          # for pretraining 0 is good, for finetuning try 0.1+
 max_iters = 2000                       # total number of training iterations
 lr_decay_iters = 2000                  # should be ~= max_iters
